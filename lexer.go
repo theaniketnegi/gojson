@@ -101,7 +101,7 @@ func (l *Lexer) tokenizeString() (Token, error) {
 		l.Reader.Discard(2)
 		return Token{Key: STRING, Value: string(b)}, nil
 	}
-	var val []byte
+	var val bytes.Buffer
 
 	l.Reader.ReadByte()
 
@@ -122,7 +122,8 @@ func (l *Lexer) tokenizeString() (Token, error) {
 
 			switch nextByte {
 			case '\\', '/', 'b', '"', 'f', 'n', 'r', 't':
-				val = append(val, '\\', nextByte)
+				val.WriteByte('\\')
+				val.WriteByte(nextByte)
 			case 'u':
 				unicodeVal := make([]byte, 4)
 				_, err := io.ReadFull(l.Reader, unicodeVal)
@@ -130,17 +131,17 @@ func (l *Lexer) tokenizeString() (Token, error) {
 				if err != nil {
 					return Token{}, err
 				}
-
-				val = append(val, '\\', 'u')
-				val = append(val, unicodeVal...)
+				val.WriteByte('\\')
+				val.WriteByte('u')
+				val.Write(unicodeVal)
 			}
 		} else if b == '\t' {
 			return Token{}, errors.New("illegal tab character")
 		} else if b < 32 || b > 128 {
 			return Token{}, fmt.Errorf("illegal character: %v", string(b))
 		} else {
-			val = append(val, b)
+			val.WriteByte(b)
 		}
 	}
-	return Token{Key: STRING, Value: string(val)}, nil
+	return Token{Key: STRING, Value: val.String()}, nil
 }
