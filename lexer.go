@@ -3,6 +3,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -69,7 +71,12 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 		case ':':
 			l.Tokens = append(l.Tokens, Token{Key: COLON, Value: ":"})
 		case '"':
-			fmt.Print("Most probably a string will go here.\n")
+			l.Reader.UnreadByte()
+			t, err := l.tokenizeString()
+			if err != nil {
+				return nil, err
+			}
+			l.Tokens = append(l.Tokens, t)
 		case 't':
 			fmt.Print("True  value.\n")
 		case 'f':
@@ -80,4 +87,60 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 			return nil, fmt.Errorf("illegal character: %c", b)
 		}
 	}
+}
+
+func (l *Lexer) tokenizeString() (Token, error) {
+	b, err := l.Reader.Peek(2)
+
+	if err != nil {
+		return Token{}, errors.New(err.Error())
+	}
+
+	if bytes.Equal(b, []byte{'"', '"'}) {
+		// skip the next two bytes ("")
+		l.Reader.Discard(2)
+		return Token{Key: STRING, Value: string(b)}, nil
+	}
+	var val []byte
+
+	l.Reader.ReadByte()
+
+	for {
+		b, err := l.Reader.ReadByte()
+		if err != nil {
+			return Token{}, fmt.Errorf("error reading string: %v", string(b))
+		}
+		if b == '"' {
+			break
+		}
+
+		if b == '\\' {
+			nextByte, err := l.Reader.ReadByte()
+			if err != nil {
+				return Token{}, fmt.Errorf("error reading string: %v", string(b))
+			}
+
+			switch nextByte {
+			case '\\', '/', 'b', '"', 'f', 'n', 'r', 't':
+				val = append(val, '\\', nextByte)
+			case 'u':
+				unicodeVal := make([]byte, 4)
+				_, err := io.ReadFull(l.Reader, unicodeVal)
+
+				if err != nil {
+					return Token{}, err
+				}
+
+				val = append(val, '\\', 'u')
+				val = append(val, unicodeVal...)
+			}
+		} else if b == '\t' {
+			return Token{}, errors.New("illegal tab character")
+		} else if b < 32 || b > 128 {
+			return Token{}, fmt.Errorf("illegal character: %v", string(b))
+		} else {
+			val = append(val, b)
+		}
+	}
+	return Token{Key: STRING, Value: string(val)}, nil
 }
