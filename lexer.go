@@ -82,9 +82,16 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 		case 'f':
 			fmt.Print("False value.\n")
 		case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			fmt.Print("Numeric value.\n")
+			l.Reader.UnreadByte()
+			t, err := l.tokenizeNumber()
+			if err != nil {
+				return nil, err
+			}
+			l.Tokens = append(l.Tokens, t)
+		case '\t':
+			return nil, errors.New("illegal character: tab")
 		default:
-			return nil, fmt.Errorf("illegal character: %c", b)
+			return nil, fmt.Errorf("illegal character: %v", string(b))
 		}
 	}
 }
@@ -144,4 +151,78 @@ func (l *Lexer) tokenizeString() (Token, error) {
 		}
 	}
 	return Token{Key: STRING, Value: val.String()}, nil
+}
+
+func (l *Lexer) tokenizeNumber() (Token, error) {
+	b, err := l.Reader.ReadByte()
+	if err != nil {
+		return Token{}, errors.New("some error occurred while trying to read number")
+	}
+	n, err := l.Reader.Peek(1)
+	if err != nil {
+		return Token{}, errors.New("some error occurred while trying to read number")
+	}
+
+	if b == '0' && isDigit(n[0]) {
+		return Token{}, errors.New("leading zeroes not allowed")
+	}
+
+	n, err = l.Reader.Peek(2)
+	if err != nil {
+		return Token{}, errors.New("some error occurred while trying to read number")
+	}
+
+	if b == '-' && n[0] == '0' && isDigit(n[1]) {
+		return Token{}, errors.New("leading zeroes not allowed")
+	}
+	var val bytes.Buffer
+	val.WriteByte(b)
+
+	isDecimal := false
+	isExponent := false
+
+	for {
+		b, err = l.Reader.ReadByte()
+		if err != nil {
+			return Token{}, errors.New("some error occurred while trying to read number")
+		}
+		if isDigit(b) {
+			val.WriteByte(b)
+		} else if b == '.' && !isDecimal {
+			isDecimal = true
+			val.WriteByte(b)
+		} else if (b == 'e' || b == 'E') && !isExponent {
+			isExponent = true
+			val.WriteByte(b)
+
+			nextByte, err := l.Reader.ReadByte()
+
+			if err != nil {
+				return Token{}, errors.New("invalid exponent notation")
+			}
+			if nextByte == '+' || nextByte == '-' {
+				val.WriteByte(nextByte)
+			} else if isDigit(nextByte) {
+				l.Reader.UnreadByte()
+			} else {
+				return Token{}, errors.New("invalid exponent notation")
+			}
+		} else if b == '+' || b == '-' {
+			return Token{}, errors.New("unexpected sign")
+		} else {
+			l.Reader.UnreadByte()
+			break
+		}
+	}
+
+	lastChar := val.String()[val.Len()-1]
+	if lastChar == '+' || lastChar == '-' {
+		return Token{}, errors.New("incomplete number")
+	}
+
+	return Token{Key: NUMBER, Value: val.String()}, nil
+}
+
+func isDigit(digit byte) bool {
+	return digit >= '0' && digit <= '9'
 }
