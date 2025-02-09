@@ -3,13 +3,17 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"os"
 )
 
 func main() {
-	file, err := os.Open("./tests/step4/valid.json")
+	if len(os.Args) < 2 {
+		log.Fatal("Provide a file name")
+	}
+
+	filename := os.Args[1]
+	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal("Error reading file: ", err)
 	}
@@ -17,22 +21,15 @@ func main() {
 
 	reader := bufio.NewReader(file)
 
-	for {
-		b, err := reader.ReadByte()
-		if err != nil {
-			if err == io.EOF {
-				fmt.Printf("Value: %s\n", err)
-				return
-			}
-			log.Fatal("Error reading file: ", err)
-		}
+	lexer := InitLexer(reader)
 
-		if b == '\n' {
-			fmt.Printf("Value: \\n\n")
-		} else if b == ' ' {
-			fmt.Printf("Value: <space>\n")
-		} else {
-			fmt.Printf("Value: %s\n", string(b))
-		}
+	tokens, err := lexer.Tokenize()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, token := range tokens {
+		fmt.Printf("Key: %v, Value: %v\n", token.Key, token.Value)
 	}
 }
