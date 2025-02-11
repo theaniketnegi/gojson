@@ -77,10 +77,20 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 				return nil, err
 			}
 			l.Tokens = append(l.Tokens, t)
-		case 't':
-			fmt.Print("True  value.\n")
-		case 'f':
-			fmt.Print("False value.\n")
+		case 't', 'f':
+			l.Reader.UnreadByte()
+			t, err := l.tokenizeBoolean()
+			if err != nil {
+				return nil, err
+			}
+			l.Tokens = append(l.Tokens, t)
+		case 'n':
+			l.Reader.UnreadByte()
+			t, err := l.tokenizeNull()
+			if err != nil {
+				return nil, err
+			}
+			l.Tokens = append(l.Tokens, t)
 		case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			l.Reader.UnreadByte()
 			t, err := l.tokenizeNumber()
@@ -221,6 +231,44 @@ func (l *Lexer) tokenizeNumber() (Token, error) {
 	}
 
 	return Token{Key: NUMBER, Value: val.String()}, nil
+}
+
+func (l *Lexer) tokenizeBoolean() (Token, error) {
+	n, err := l.Reader.Peek(4)
+
+	if err != nil {
+		return Token{}, errors.New("error while trying to read boolean value")
+	}
+
+	if bytes.Equal([]byte("true"), n) {
+		l.Reader.Discard(4)
+		return Token{Key: TRUE, Value: "true"}, nil
+	}
+
+	n, err = l.Reader.Peek(5)
+	if err != nil {
+		return Token{}, errors.New("error while trying to read boolean value")
+	}
+
+	if bytes.Equal([]byte("false"), n) {
+		l.Reader.Discard(5)
+		return Token{Key: FALSE, Value: "false"}, nil
+	}
+	return Token{}, errors.New("error while trying to read boolean value")
+}
+
+func (l *Lexer) tokenizeNull() (Token, error) {
+	n, err := l.Reader.Peek(4)
+	if err != nil {
+		return Token{}, errors.New("error while trying to read null value")
+	}
+
+	if bytes.Equal([]byte("null"), n) {
+		l.Reader.Discard(4)
+		return Token{Key: NULL, Value: "null"}, nil
+	}
+
+	return Token{}, errors.New("error while trying to read null value")
 }
 
 func isDigit(digit byte) bool {
