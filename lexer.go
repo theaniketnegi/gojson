@@ -151,6 +151,8 @@ func (l *Lexer) tokenizeString() (Token, error) {
 				val.WriteByte('\\')
 				val.WriteByte('u')
 				val.Write(unicodeVal)
+			default:
+				return Token{}, errors.New("illegal escape character")
 			}
 		} else if b == '\t' {
 			return Token{}, errors.New("illegal tab character")

@@ -28,6 +28,11 @@ func NewParser(reader *bufio.Reader) (*Parser, error) {
 type JsonValue interface{}
 
 func (p *Parser) Parse() (JsonValue, error) {
+	firstToken := p.tokens[0]
+	if firstToken.Key != L_BRACE && firstToken.Key != L_SQUARE {
+		return nil, fmt.Errorf("JSON payload should be an object or array, not a %s", p.tokens[0].Key)
+	}
+
 	value, err := p.parseValue()
 	if err != nil {
 		return nil, err

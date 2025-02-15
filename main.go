@@ -29,5 +29,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Print(value)
+	fmt.Println(value)
 }
