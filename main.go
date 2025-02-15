@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	p "github.com/theaniketnegi/gojson/parser"
 )
 
 func main() {
@@ -21,7 +23,7 @@ func main() {
 
 	reader := bufio.NewReader(file)
 
-	parser, err := NewParser(reader)
+	parser, err := p.NewParser(reader)
 	if err != nil {
 		log.Fatal("Error creating parser: ", err)
 	}

@@ -1,5 +1,5 @@
 //go:generate stringer -type=TokenType
-package main
+package parser
 
 import (
 	"bufio"
