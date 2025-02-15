@@ -21,15 +21,13 @@ func main() {
 
 	reader := bufio.NewReader(file)
 
-	lexer := InitLexer(reader)
-
-	tokens, err := lexer.Tokenize()
-
+	parser, err := NewParser(reader)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error creating parser: ", err)
 	}
-
-	for _, token := range tokens {
-		fmt.Printf("Key: %v, Value: %v\n", token.Key, token.Value)
+	value, err := parser.Parse()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Print(value)
 }
