@@ -73,7 +73,7 @@ func (p *Parser) parseValue() (JsonValue, error) {
 		p.currentIdx++
 		return nil, nil
 	default:
-		return nil, errors.New("unexpected token")
+		return nil, fmt.Errorf("unexpected token: %v", token.Key)
 	}
 }
 
@@ -123,8 +123,35 @@ func (p *Parser) parseObject() (JsonValue, error) {
 	return obj, nil
 }
 
-// func (p *Parser) parseArray() (JsonValue, error) {
-// 	if p.tokens[p.currentIdx].Key != L_SQUARE {
-// 		return nil, errors.New("unexpected token, expected: [")
-// 	}
-// }
+func (p *Parser) parseArray() (JsonValue, error) {
+	if p.tokens[p.currentIdx].Key != L_SQUARE {
+		return nil, errors.New("unexpected token, expected: [")
+	}
+	p.currentIdx++
+
+	arr := []JsonValue{}
+	if p.tokens[p.currentIdx].Key == R_SQUARE {
+		p.currentIdx++
+		return arr, nil
+	}
+
+	for {
+		value, err := p.parseValue()
+		if err != nil {
+			return nil, err
+		}
+
+		arr = append(arr, value)
+
+		if p.tokens[p.currentIdx].Key == R_SQUARE {
+			p.currentIdx++
+			break
+		}
+
+		if p.tokens[p.currentIdx].Key != COMMA {
+			return nil, errors.New("unexpected token, expected: comma or ]")
+		}
+		p.currentIdx++
+	}
+	return arr, nil
+}
